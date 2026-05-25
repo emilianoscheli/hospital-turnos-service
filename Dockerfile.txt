@@ -1,0 +1,12 @@
+# Usamos una imagen base ligera con Java 17
+FROM eclipse-temurin:17-jre-alpine
+
+# Directorio de trabajo dentro del contenedor
+WORKDIR /app
+
+# Copiamos el archivo .jar compilado por Maven al contenedor
+# (Maven suele dejarlo en la carpeta target/)
+COPY target/*.jar app.jar
+
+# Comando para ejecutar la aplicación
+ENTRYPOINT ["java", "-jar", "app.jar"]
