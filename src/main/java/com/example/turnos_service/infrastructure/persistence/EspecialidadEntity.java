@@ -1,7 +1,7 @@
 package com.example.turnos_service.infrastructure.persistence;
 
 import jakarta.persistence.*;
-import lombok.Data;
+        import lombok.Data;
 
 @Entity
 @Table(name = "tsespecialidades")

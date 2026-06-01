@@ -63,6 +63,18 @@ public class TurnoEntity {
     @Column(name = "idtipoprioridad")
     private Integer idTipoPrioridad;
 
+    // 1. FUNDAMENTAL PARA AUDITORÍA (Quién dio el turno)
+    @Column(name = "idusuarioasigno")
+    private Long idUsuarioAsigno;
+
+    // 2. FUNDAMENTAL PARA NEGOCIO (Primera vez, control, etc.)
+    @Column(name = "idmotivoconsulta")
+    private Integer idMotivoConsulta;
+
+    // 3. (Opcional pero recomendado si tu hospital lo usa)
+    @Column(name = "idtipoconsulta")
+    private Integer idTipoConsulta = 1;
+
     // --- EL ARREGLO ESTÁ ACÁ ---
     // Hibernate une la tabla en memoria usando la columna identidadpaciente,
     // insertable = false, updatable = false le dice que es de SOLO LECTURA.

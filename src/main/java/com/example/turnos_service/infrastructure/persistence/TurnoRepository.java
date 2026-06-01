@@ -29,4 +29,13 @@ public interface TurnoRepository extends JpaRepository<TurnoEntity, Long> {
             @Param("idMedico") Long idMedico,
             @Param("fechaDesde") LocalDate fechaDesde,
             @Param("fechaHasta") LocalDate fechaHasta);
+
+    @Query("SELECT t FROM TurnoEntity t JOIN FETCH t.datosPaciente p " +
+            "WHERE t.idServicioAtencion = :idServicio " +
+            "AND t.fecha = :fecha " +
+            "AND t.idEstadoConsulta != 3 " + // Excluir anulados
+            "ORDER BY t.hora ASC")
+    List<TurnoEntity> findAgendaByServicioAndFecha(
+            @Param("idServicio") Integer idServicio,
+            @Param("fecha") LocalDate fecha);
 }

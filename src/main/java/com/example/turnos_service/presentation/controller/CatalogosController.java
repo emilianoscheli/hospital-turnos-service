@@ -28,9 +28,22 @@ public class CatalogosController {
         return ResponseEntity.ok(response);
     }
 
+    // 1. ELIMINÉ el método viejo getEspecialidades(@RequestParam) que causaba el choque.
+
+    // 2. Traer TODAS las especialidades sin filtro
     @GetMapping("/especialidades")
-    public ResponseEntity<List<CatalogoDTO>> getEspecialidades(@RequestParam Long idServicio) {
-        List<CatalogoDTO> response = especialidadRepository.findEspecialidadesByServicioActivo(idServicio).stream()
+    public ResponseEntity<List<CatalogoDTO>> getAllEspecialidades() {
+        List<CatalogoDTO> response = especialidadRepository.findAll().stream()
+                .map(e -> new CatalogoDTO(e.getId().toString(), e.getEspecialidad()))
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(response);
+    }
+
+    // 3. Traer especialidades FILTRADAS por un servicio específico (Tu ruta RESTful)
+    @GetMapping("/servicios/{idServicio}/especialidades")
+    public ResponseEntity<List<CatalogoDTO>> getEspecialidadesPorServicio(@PathVariable Long idServicio) {
+        List<CatalogoDTO> response = especialidadRepository.findEspecialidadesByServicioActivo(idServicio)
+                .stream()
                 .map(e -> new CatalogoDTO(e.getId().toString(), e.getEspecialidad()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(response);
@@ -41,7 +54,6 @@ public class CatalogosController {
             @RequestParam Long idEspecialidad,
             @RequestParam(required = false) Long idServicio) {
 
-        // Si mandan servicio, filtramos por ambos, sino solo por especialidad
         var medicos = (idServicio != null)
                 ? medicoRepository.findByServicioAndEspecialidadAndActivoTrue(idServicio, idEspecialidad)
                 : medicoRepository.findByEspecialidadAndActivoTrueOrderByApellido(idEspecialidad);

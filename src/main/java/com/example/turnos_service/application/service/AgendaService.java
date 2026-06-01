@@ -111,4 +111,33 @@ public class AgendaService {
                     .build();
         }).collect(Collectors.toList());
     }
+    // Agrega esto dentro de tu clase AgendaService.java
+    public List<EventoAgendaDTO> obtenerAgendaPorServicio(Integer idServicio, String fecha) {
+        LocalDate fechaLocal = LocalDate.parse(fecha);
+
+        // Llamamos a la nueva query que definiste en el repositorio
+        List<TurnoEntity> turnos = turnoRepository.findAgendaByServicioAndFecha(idServicio, fechaLocal);
+
+        return turnos.stream().map(turno -> {
+            LocalDateTime startDt = LocalDateTime.of(turno.getFecha(), turno.getHora());
+            LocalDateTime endDt = startDt.plusMinutes(15);
+
+            String nombrePaciente = turno.getDatosPaciente() != null ?
+                    turno.getDatosPaciente().getApellidoPaterno() + " " + turno.getDatosPaciente().getPrimerNombre() :
+                    "PACIENTE ID: " + turno.getIdPaciente();
+
+            return EventoAgendaDTO.builder()
+                    .id(turno.getId().toString())
+                    .title(nombrePaciente)
+                    .start(startDt.format(ISO_FORMATTER))
+                    .end(endDt.format(ISO_FORMATTER))
+                    .extendedProps(Map.of(
+                            "tipo", "turno",
+                            "idPaciente", turno.getIdPaciente(),
+                            "estadoConsulta", turno.getIdEstadoConsulta()
+                    ))
+                    .build();
+        }).collect(Collectors.toList());
+    }
+
 }

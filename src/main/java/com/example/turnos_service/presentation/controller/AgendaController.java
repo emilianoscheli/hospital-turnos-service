@@ -39,4 +39,15 @@ public class AgendaController {
         agendaService.anularTurno(id, idMotivo);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/servicio")
+    public ResponseEntity<List<EventoAgendaDTO>> getAgendaPorServicio(
+            @RequestParam Integer idServicio,
+            @RequestParam String fecha) {
+
+        // Llamas a un nuevo método en tu AgendaService que use la query que acabamos de crear
+        List<EventoAgendaDTO> agenda = agendaService.obtenerAgendaPorServicio(idServicio, fecha);
+
+        return ResponseEntity.ok(agenda);
+    }
 }
