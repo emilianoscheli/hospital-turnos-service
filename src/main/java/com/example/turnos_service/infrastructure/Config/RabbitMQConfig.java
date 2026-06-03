@@ -9,11 +9,18 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RabbitMQConfig {
 
-    // Agregamos la creación de la cola aquí también.
-    // De esta forma, si Turnos arranca primero, crea la cola y no da error 404.
+    // La cola que ya tenías
     @Bean
-    public Queue queue() {
-        return new Queue("paciente.sync.queue", true); // true = la cola sobrevive a reinicios de RabbitMQ
+    public Queue pacienteSyncQueue() {
+        return new Queue("paciente.sync.queue", true);
+    }
+
+    // NUEVA COLA para la integración asíncrona con el PACS
+    public static final String PHANTOM_QUEUE_NAME = "phantom.dicom.queue";
+
+    @Bean
+    public Queue phantomDicomQueue() {
+        return new Queue(PHANTOM_QUEUE_NAME, true);
     }
 
     @Bean
