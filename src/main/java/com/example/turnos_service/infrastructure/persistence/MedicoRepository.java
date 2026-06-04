@@ -30,4 +30,7 @@ public interface MedicoRepository extends JpaRepository<MedicoEntity, Long> {
     List<MedicoEntity> findByServicioAndEspecialidadAndActivoTrue(
             @Param("idServicio") Long idServicio,
             @Param("idEspecialidad") Long idEspecialidad);
+
+    // Agregalo en tu MedicoRepository existente
+    List<MedicoEntity> findByActivoTrue();
 }

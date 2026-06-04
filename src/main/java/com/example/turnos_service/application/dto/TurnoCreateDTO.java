@@ -1,19 +1,25 @@
 package com.example.turnos_service.application.dto;
 
 import lombok.Data;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 @Data
 public class TurnoCreateDTO {
     private Long idPaciente;
-    private Long idProfesional;
     private Integer idServicio;
-
-    // Estos campos los envía el frontend y faltaban en el DTO:
-    private Integer idEspecialidad;
+    private Long idEspecialidad;
+    private Long idProfesional;
     private Long idUsuarioAsigno;
-    private String motivoConsulta;
-    private String prioridad;
+    private LocalDate fecha;
+    private LocalTime hora;
 
-    private String fecha;
-    private String hora;
+    // --- CORRECCIÓN: Pasar a Integer para recibir los IDs ---
+    private Integer motivoConsulta;
+    private Integer prioridad;
+
+    // --- NUEVOS CAMPOS PARA DIAGNÓSTICO POR IMÁGENES (idServicio = 3) ---
+    private Long solicitante;
+    private Long estudio;
+    private String diagnostico;
 }

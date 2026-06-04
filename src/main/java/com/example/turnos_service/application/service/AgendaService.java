@@ -4,7 +4,8 @@ import com.example.turnos_service.application.dto.EventoAgendaDTO;
 import com.example.turnos_service.application.dto.TurnoCreateDTO;
 import com.example.turnos_service.infrastructure.persistence.TurnoEntity;
 import com.example.turnos_service.infrastructure.persistence.TurnoRepository;
-import com.example.turnos_service.infrastructure.persistence.DatoPersonaRepository; // <-- Import agregado
+import com.example.turnos_service.infrastructure.persistence.DatoPersonaRepository;
+import com.example.turnos_service.infrastructure.persistence.EstudioRepository; // <-- Import agregado
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap; // <-- Import agregado para el Map mutable
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -23,15 +25,18 @@ import java.util.stream.Collectors;
 public class AgendaService {
 
     private final TurnoRepository turnoRepository;
-    private final DatoPersonaRepository datoPersonaRepository; // <-- ¡Descomentado para que funcione!
+    private final DatoPersonaRepository datoPersonaRepository;
+    private final EstudioRepository estudioRepository; // <-- Inyectamos el repositorio de estudios
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
     @Transactional
     public EventoAgendaDTO crearTurno(TurnoCreateDTO dto) {
-        LocalDate fechaTurno = LocalDate.parse(dto.getFecha());
-        LocalTime horaTurno = LocalTime.parse(dto.getHora());
 
+        LocalDate fechaTurno = dto.getFecha();
+        LocalTime horaTurno = dto.getHora();
+
+        // 1. Validar si ya existe el turno
         boolean yaTieneTurno = turnoRepository.existsByIdPacienteAndIdMedicoAndFechaAndIdEstadoConsulta(
                 dto.getIdPaciente(), dto.getIdProfesional(), fechaTurno, 1);
 
@@ -39,18 +44,37 @@ public class AgendaService {
             throw new RuntimeException("El paciente ya tiene un turno asignado para ese día con este profesional.");
         }
 
+        // 2. Armar la entidad principal
         TurnoEntity nuevoTurno = new TurnoEntity();
         nuevoTurno.setIdPaciente(dto.getIdPaciente());
         nuevoTurno.setIdMedico(dto.getIdProfesional());
         nuevoTurno.setIdServicioAtencion(dto.getIdServicio());
         nuevoTurno.setFecha(fechaTurno);
         nuevoTurno.setHora(horaTurno);
-        nuevoTurno.setIdEstadoConsulta(1);
         nuevoTurno.setProgramada(1);
 
+        // Mapeo de campos extra
+        nuevoTurno.setIdUsuarioAsigno(dto.getIdUsuarioAsigno());
+        nuevoTurno.setIdMotivoConsulta(dto.getMotivoConsulta());
+        nuevoTurno.setIdTipoPrioridad(dto.getPrioridad());
+
+        // --- 3. LÓGICA CONDICIONAL: Diagnóstico por Imágenes ---
+        if (dto.getIdServicio() != null && dto.getIdServicio() == 3) {
+            nuevoTurno.setIdSolicitante(dto.getSolicitante());
+            nuevoTurno.setIdEstudio(dto.getEstudio());
+            nuevoTurno.setDiagnostico(dto.getDiagnostico());
+
+            nuevoTurno.setIdTipoConsulta(3);
+            nuevoTurno.setIdEstadoConsulta(1);
+        } else {
+            nuevoTurno.setIdTipoConsulta(1);
+            nuevoTurno.setIdEstadoConsulta(1);
+        }
+
+        // 4. Persistir en PostgreSQL
         TurnoEntity turnoGuardado = turnoRepository.save(nuevoTurno);
 
-        // Buscamos el nombre localmente
+        // 5. Armar la respuesta
         String nombrePaciente = datoPersonaRepository.findById(dto.getIdPaciente())
                 .map(p -> p.getApellidoPaterno() + " " + p.getPrimerNombre())
                 .orElse("PACIENTE DESCONOCIDO");
@@ -58,16 +82,18 @@ public class AgendaService {
         LocalDateTime startDt = LocalDateTime.of(turnoGuardado.getFecha(), turnoGuardado.getHora());
         LocalDateTime endDt = startDt.plusMinutes(15);
 
+        // Construimos el mapa de propiedades de forma dinámica
+        Map<String, Object> props = new HashMap<>();
+        props.put("tipo", "turno");
+        props.put("idPaciente", turnoGuardado.getIdPaciente());
+        props.put("estadoConsulta", turnoGuardado.getIdEstadoConsulta());
+
         return EventoAgendaDTO.builder()
                 .id(turnoGuardado.getId().toString())
                 .title(nombrePaciente)
                 .start(startDt.format(ISO_FORMATTER))
                 .end(endDt.format(ISO_FORMATTER))
-                .extendedProps(Map.of(
-                        "tipo", "turno",
-                        "idPaciente", turnoGuardado.getIdPaciente(),
-                        "estadoConsulta", turnoGuardado.getIdEstadoConsulta()
-                ))
+                .extendedProps(props)
                 .build();
     }
 
@@ -76,7 +102,6 @@ public class AgendaService {
         TurnoEntity turno = turnoRepository.findById(idTurno)
                 .orElseThrow(() -> new RuntimeException("El turno no existe"));
 
-        // Regla estricta: Borrado lógico cambiando el estado
         turno.setIdEstadoConsulta(3);
         turno.setIdMotivoAnulacionConsulta(idMotivo);
 
@@ -97,25 +122,36 @@ public class AgendaService {
                     turno.getDatosPaciente().getApellidoPaterno() + " " + turno.getDatosPaciente().getPrimerNombre() :
                     "PACIENTE ID: " + turno.getIdPaciente();
 
+            // 1. Armamos las propiedades base
+            Map<String, Object> props = new HashMap<>();
+            props.put("tipo", "turno");
+            props.put("idPaciente", turno.getIdPaciente());
+            props.put("estadoConsulta", turno.getIdEstadoConsulta());
+            props.put("idServicio", turno.getIdServicioAtencion() != null ? turno.getIdServicioAtencion() : "");
+
+            // 2. Inyectamos los datos de DXI si corresponde
+            if (turno.getIdServicioAtencion() != null && turno.getIdServicioAtencion() == 3) {
+                props.put("diagnostico", turno.getDiagnostico());
+
+                if (turno.getIdEstudio() != null) {
+                    estudioRepository.findById(turno.getIdEstudio())
+                            .ifPresent(est -> props.put("estudio", est.getNombre()));
+                }
+            }
+
             return EventoAgendaDTO.builder()
                     .id(turno.getId().toString())
                     .title(nombrePaciente)
                     .start(startDt.format(ISO_FORMATTER))
                     .end(endDt.format(ISO_FORMATTER))
-                    .extendedProps(Map.of(
-                            "tipo", "turno",
-                            "idPaciente", turno.getIdPaciente(),
-                            "estadoConsulta", turno.getIdEstadoConsulta(),
-                            "idServicio", turno.getIdServicioAtencion() != null ? turno.getIdServicioAtencion() : ""
-                    ))
+                    .extendedProps(props)
                     .build();
         }).collect(Collectors.toList());
     }
-    // Agrega esto dentro de tu clase AgendaService.java
+
     public List<EventoAgendaDTO> obtenerAgendaPorServicio(Integer idServicio, String fecha) {
         LocalDate fechaLocal = LocalDate.parse(fecha);
 
-        // Llamamos a la nueva query que definiste en el repositorio
         List<TurnoEntity> turnos = turnoRepository.findAgendaByServicioAndFecha(idServicio, fechaLocal);
 
         return turnos.stream().map(turno -> {
@@ -126,18 +162,29 @@ public class AgendaService {
                     turno.getDatosPaciente().getApellidoPaterno() + " " + turno.getDatosPaciente().getPrimerNombre() :
                     "PACIENTE ID: " + turno.getIdPaciente();
 
+            // 1. Armamos las propiedades base
+            Map<String, Object> props = new HashMap<>();
+            props.put("tipo", "turno");
+            props.put("idPaciente", turno.getIdPaciente());
+            props.put("estadoConsulta", turno.getIdEstadoConsulta());
+
+            // 2. Inyectamos los datos de DXI si corresponde
+            if (turno.getIdServicioAtencion() != null && turno.getIdServicioAtencion() == 3) {
+                props.put("diagnostico", turno.getDiagnostico());
+
+                if (turno.getIdEstudio() != null) {
+                    estudioRepository.findById(turno.getIdEstudio())
+                            .ifPresent(est -> props.put("estudio", est.getNombre()));
+                }
+            }
+
             return EventoAgendaDTO.builder()
                     .id(turno.getId().toString())
                     .title(nombrePaciente)
                     .start(startDt.format(ISO_FORMATTER))
                     .end(endDt.format(ISO_FORMATTER))
-                    .extendedProps(Map.of(
-                            "tipo", "turno",
-                            "idPaciente", turno.getIdPaciente(),
-                            "estadoConsulta", turno.getIdEstadoConsulta()
-                    ))
+                    .extendedProps(props)
                     .build();
         }).collect(Collectors.toList());
     }
-
 }

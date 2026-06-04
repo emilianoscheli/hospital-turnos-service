@@ -6,6 +6,7 @@ import com.example.turnos_service.infrastructure.persistence.TurnoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.time.LocalDateTime;
 
 import java.time.format.DateTimeFormatter;
 
@@ -53,5 +54,16 @@ public class MysticOrchestrator {
 
         System.out.println("[Orchestrator] Payload construido para Turno ID: " + idTurno + " | DNI: " + dniReal);
         publisher.dispatch(payload);
+    }
+    @Transactional // IMPORTANTE: Para que el save() impacte correctamente
+    public void marcarComoAtendido(Long idTurno) {
+        TurnoEntity turno = turnoRepository.findById(idTurno)
+                .orElseThrow(() -> new RuntimeException("Turno no encontrado para actualizar estado"));
+
+        turno.setIdEstadoConsulta(2);
+        turno.setFechaHoraAtencion(LocalDateTime.now());
+
+        turnoRepository.save(turno);
+        System.out.println("[Orchestrator] Base de datos actualizada: Turno " + idTurno + " marcado como ATENDIDO (2).");
     }
 }

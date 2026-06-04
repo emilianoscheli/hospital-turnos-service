@@ -4,17 +4,22 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.util.Map;
 
 @Data
 @Builder
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 public class EventoAgendaDTO {
+
     private String id;
     private String title;
     private String start;
     private String end;
-    private String display;
+
+    // Al usar un Map, Jackson (el conversor a JSON de Spring)
+    // lo va a transformar perfectamente en el objeto { ... } que espera tu React
     private Map<String, Object> extendedProps;
+
 }

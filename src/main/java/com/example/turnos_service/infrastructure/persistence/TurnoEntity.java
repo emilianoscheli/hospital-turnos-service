@@ -75,12 +75,24 @@ public class TurnoEntity {
     @Column(name = "idtipoconsulta")
     private Integer idTipoConsulta = 1;
 
+    // --- NUEVOS CAMPOS PARA DIAGNÓSTICO POR IMÁGENES ---
+
+    @Column(name = "idsolicitante")
+    private Long idSolicitante; // ID del médico que deriva
+
+    @Column(name = "idestudio")
+    private Long idEstudio; // ID de testudios
+
+    @Column(name = "diagnostico")
+    private String diagnostico; // Texto opcional
+
     // --- EL ARREGLO ESTÁ ACÁ ---
     // Hibernate une la tabla en memoria usando la columna identidadpaciente,
     // insertable = false, updatable = false le dice que es de SOLO LECTURA.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "identidadpaciente", referencedColumnName = "identidad", insertable = false, updatable = false)
     private DatoPersonaEntity datosPaciente;
+
 
     @Transient
     public boolean isActivo() {
