@@ -27,4 +27,11 @@ public class RabbitMQConfig {
     public MessageConverter jsonMessageConverter() {
         return new Jackson2JsonMessageConverter();
     }
+    // --- NUEVA COLA PARA LOS INFORMES GUARDADOS ---
+    public static final String INFORME_QUEUE_NAME = "informe.guardado.queue";
+
+    @Bean
+    public Queue informeGuardadoQueue() {
+        return new Queue(INFORME_QUEUE_NAME, true);
+    }
 }

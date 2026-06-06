@@ -1,12 +1,13 @@
 package com.example.turnos_service.application.service;
 
+import com.example.turnos_service.application.dto.EstudioPendienteDTO;
+import com.example.turnos_service.application.dto.EstudioHistorialDTO;
 import com.example.turnos_service.application.dto.EventoAgendaDTO;
 import com.example.turnos_service.application.dto.TurnoCreateDTO;
 import com.example.turnos_service.infrastructure.persistence.TurnoEntity;
 import com.example.turnos_service.infrastructure.persistence.TurnoRepository;
 import com.example.turnos_service.infrastructure.persistence.DatoPersonaRepository;
-import com.example.turnos_service.infrastructure.persistence.EstudioRepository; // <-- Import agregado
-
+import com.example.turnos_service.infrastructure.persistence.EstudioRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +16,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.HashMap; // <-- Import agregado para el Map mutable
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,7 +27,7 @@ public class AgendaService {
 
     private final TurnoRepository turnoRepository;
     private final DatoPersonaRepository datoPersonaRepository;
-    private final EstudioRepository estudioRepository; // <-- Inyectamos el repositorio de estudios
+    private final EstudioRepository estudioRepository;
 
     private static final DateTimeFormatter ISO_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
@@ -186,5 +187,19 @@ public class AgendaService {
                     .extendedProps(props)
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    // --- NUEVOS MÉTODOS PARA LOS INFORMES DE ESTUDIOS ---
+
+    public List<EstudioPendienteDTO> obtenerEstudiosPendientes(Long idPaciente) {
+        // Traemos las consultas que no tienen informe en el último año
+        LocalDate fechaHaceUnAno = LocalDate.now().minusYears(1);
+        return turnoRepository.findEstudiosPendientesPorPaciente(idPaciente, fechaHaceUnAno);
+    }
+
+    public List<EstudioHistorialDTO> obtenerHistorialEstudios(Long idPaciente) {
+        // Traemos las consultas que SI tienen informe (no borrado) en el último año
+        LocalDate fechaHaceUnAno = LocalDate.now().minusYears(1);
+        return turnoRepository.findEstudiosHistorialPorPaciente(idPaciente, fechaHaceUnAno);
     }
 }
