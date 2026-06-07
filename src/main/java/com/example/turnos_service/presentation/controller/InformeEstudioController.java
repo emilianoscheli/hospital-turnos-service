@@ -4,7 +4,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.util.List;
-
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 // Repositorios y Entidades
 import com.example.turnos_service.infrastructure.persistence.TurnoRepository;
 import com.example.turnos_service.infrastructure.persistence.MedicoRepository;
@@ -62,5 +65,20 @@ public class InformeEstudioController {
     public ResponseEntity<Long> guardarInforme(@RequestBody InformeRequestDTO request) {
         Long idGenerado = informeService.guardarInforme(request);
         return ResponseEntity.status(201).body(idGenerado);
+    }
+    // Le sacamos el "produces" para evitar el crash si hay excepciones
+    @GetMapping(value = "/informes/{id}/pdf")
+    public ResponseEntity<byte[]> descargarPdfInforme(@PathVariable("id") Long idConsulta) {
+
+        // 1. Buscás el informe por idConsulta
+        byte[] pdfBytes = informeService.generarPdf(idConsulta);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=informe_" + idConsulta + ".pdf");
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
     }
 }

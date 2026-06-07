@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <title>Informe de Estudio</title>
+    <style>
+        body { font-family: sans-serif; font-size: 14px; margin: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .info-paciente { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        .info-paciente td { padding: 5px; border: 1px solid #ccc; }
+        .titulo-informe { font-weight: bold; text-align: center; font-size: 16px; margin: 20px 0; }
+        .cuerpo-informe { white-space: pre-wrap; text-align: justify; }
+        .firma { margin-top: 50px; text-align: right; }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h2>Hospital - Departamento de Diagnóstico por Imágenes</h2>
+</div>
+
+<table class="info-paciente">
+    <tr>
+        <td><strong>Paciente:</strong> <span th:text="${pacienteNombre}"></span></td>
+        <td><strong>DNI:</strong> <span th:text="${pacienteDni}"></span></td>
+    </tr>
+    <tr>
+        <td><strong>Fecha del Estudio:</strong> <span th:text="${fechaEstudio}"></span></td>
+        <td><strong>Nro. Consulta:</strong> <span th:text="${idConsulta}"></span></td>
+    </tr>
+</table>
+
+<div class="titulo-informe" th:text="${titulo}"></div>
+
+<div class="cuerpo-informe" th:text="${informeTextual}"></div>
+
+<div class="firma">
+    <p>___________________________</p>
+    <p>Dr. <span th:text="${medicoInformante}"></span></p>
+</div>
+
+</body>
+</html>

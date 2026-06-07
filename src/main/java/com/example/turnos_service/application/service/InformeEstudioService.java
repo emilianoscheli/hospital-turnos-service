@@ -11,17 +11,27 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
+// Imports para la generación del PDF
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+import com.openhtmltopdf.pdfboxout.PdfRendererBuilder;
+import java.io.ByteArrayOutputStream;
 import java.time.LocalDateTime;
 
 @Service
-@RequiredArgsConstructor // Lombok te crea el constructor con todos los "final"
+@RequiredArgsConstructor
 public class InformeEstudioService {
 
     private final InformeEstudioRepository informeRepository;
     private final TurnoRepository turnoRepository;
     private final MedicoRepository medicoRepository;
     private final RabbitTemplate rabbitTemplate;
+
+    // Motor de plantillas inyectado automáticamente por Spring Boot
+    private final TemplateEngine templateEngine;
 
     @Transactional
     public Long guardarInforme(InformeRequestDTO request) {
@@ -56,10 +66,52 @@ public class InformeEstudioService {
         // 3. Guardar en Base de Datos
         InformeEstudioEntity informeGuardado = informeRepository.save(nuevoInforme);
 
-        // 4. Publicar el evento en RabbitMQ de forma asíncrona (Fire and forget)
+        // 4. Publicar el evento en RabbitMQ de forma asíncrona
         InformeGuardadoEvent evento = new InformeGuardadoEvent(informeGuardado.getId(), request.getIdConsulta());
         rabbitTemplate.convertAndSend(RabbitMQConfig.INFORME_QUEUE_NAME, evento);
 
         return informeGuardado.getId();
+    }
+
+    public byte[] generarPdf(Long idConsulta) {
+        // 1. Buscamos el informe
+        InformeEstudioEntity informe = informeRepository.findByTurnoIdAndFechaHoraBorradoSuaveIsNull(idConsulta)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Informe no encontrado para la consulta " + idConsulta));
+
+        try {
+            // 2. Mapeo de datos para el HTML
+            Context context = new Context();
+            context.setVariable("idConsulta", idConsulta);
+            context.setVariable("titulo", informe.getTitulo() != null ? informe.getTitulo() : "Estudio sin título");
+            context.setVariable("informeTextual", informe.getInformeTextual());
+            context.setVariable("fechaEstudio", informe.getFecha().toString());
+
+            // Datos del paciente
+            String nombrePaciente = informe.getTurno().getDatosPaciente().getApellidoPaterno() + " " +
+                    informe.getTurno().getDatosPaciente().getPrimerNombre();
+            context.setVariable("pacienteNombre", nombrePaciente);
+            context.setVariable("pacienteDni", informe.getTurno().getDatosPaciente().getNumeroDocumento());
+
+            // Datos del médico informante
+            String nombreMedico = informe.getMedico().getDatosPersonales().getApellidoPaterno() + " " +
+                    informe.getMedico().getDatosPersonales().getPrimerNombre();
+            context.setVariable("medicoInformante", nombreMedico);
+
+            // 3. Procesar Thymeleaf
+            String htmlProcesado = templateEngine.process("informe_medico", context);
+
+            // 4. Renderizar a PDF
+            try (ByteArrayOutputStream os = new ByteArrayOutputStream()) {
+                PdfRendererBuilder builder = new PdfRendererBuilder();
+                builder.useFastMode();
+                builder.withHtmlContent(htmlProcesado, "/");
+                builder.toStream(os);
+                builder.run();
+                return os.toByteArray();
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error crítico al generar el PDF del informe", e);
+        }
     }
 }
